@@ -1,0 +1,16 @@
+---
+# defaults file for nginx
+
+nginx_clear_config: false
+nginx_clear_config_files:
+  - "/etc/nginx/conf.d/"
+  - "/etc/nginx/snippets/"
+  - "/etc/nginx/sites-available/"
+  - "/etc/nginx/sites-enabled/"
+
+nginx_deploy_config: true
+nginx_config_fileglob:
+  - "{{ ansible_hostname }}/nginx.conf"
+  - "{{ ansible_hostname }}/snippets/*"
+  - "{{ ansible_hostname }}/conf.d/*"
+  

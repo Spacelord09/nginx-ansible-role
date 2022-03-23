@@ -1,0 +1,49 @@
+---
+- block:
+    - name: "Create folder: {{ dest | dirname }}"
+      file:
+        path: "{{ dest | dirname }}"
+        state: "directory"
+        mode: 0755
+        owner: "root"
+        group: "root"
+
+    - name: "Copy configuration: {{ dest }}"
+      copy:
+        src: "{{ src }}"
+        dest: "{{ dest }}"
+        mode: 0644
+        owner: "root"
+        group: "root"
+        backup: true
+      register: updated
+
+    - name: "Verify configuration: {{ dest }}"
+      shell: "nginx -t"
+      notify: restart_nginx # If check was successful -> restart nginx with handler.
+      when: updated.changed
+      
+  rescue:
+    - name: "Reverting to last working configuration state, since tests failed: {{ dest }}"
+      copy:
+        src: "{{ updated['backup_file'] }}"
+        dest: "{{ dest }}"
+        remote_src: true        
+      when: updated['backup_file'] is defined
+
+    - name: "Delete new configuration, since tests failed: {{ dest }}"
+      file:
+        path: "{{ dest }}"
+        state: "absent"
+      when: updated['backup_file'] is not defined
+
+  always:
+    - name: "Delete backup if created: {{ dest }}"
+      file:
+        path: "{{ updated['backup_file'] }}"
+        state: "absent"
+      when: updated['backup_file'] is defined
+  vars:
+    src: "{{ item }}"
+    dest: "/etc/nginx/{{ item | regex_search('(?<=\/' + ansible_hostname | string + '\/)[^#]*') }}" # Ignores rest of string at symbol "#".
+  when: ansible_hostname in item # Check if hostname(ansible_hostname) is in file path(item). We need it to get the dest path(regex) right. If this check fails -> skip.
